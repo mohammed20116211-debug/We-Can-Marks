@@ -1,0 +1,25 @@
+name: Build APK
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p lib test assets && mv main.dart calc.dart lib/ && mv calc_test.dart test/ && mv logo.png icon.png assets/
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: subosito/flutter-action@v2
+        with: {channel: stable}
+      - run: flutter create --platforms=android --org com.wecan --project-name wecan_marks .
+      - run: rm -f test/widget_test.dart
+      - run: flutter pub get
+      - run: dart run flutter_launcher_icons
+      - run: sed -i 's/android:label="[^"]*"/android:label="We Can Marks"/' android/app/src/main/AndroidManifest.xml
+      - run: flutter test
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: WeCanMarks-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
