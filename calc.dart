@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class CalcResult {
   final String? error;
   final int totalMilli, count, wrong, correct, hundredths;
@@ -40,4 +42,47 @@ CalcResult calculate(String t, String n, String w) {
   if (N <= 0) return CalcResult.err('عدد الفقرات يجب أن يكون أكبر من صفر');
   if (W > N) return CalcResult.err('عدد الفقرات الخاطئة لا يمكن أن يتجاوز إجمالي فقرات الاختبار');
   return CalcResult(T, N, W);
+}
+
+const maxHistory = 10;
+
+class HistoryEntry {
+  final String total, perItem, score;
+  final int count, wrong, correct, ts;
+  HistoryEntry({required this.total, required this.count, required this.wrong,
+      required this.correct, required this.perItem, required this.score, required this.ts});
+  factory HistoryEntry.from(CalcResult r, int ts) => HistoryEntry(
+      total: r.total, count: r.count, wrong: r.wrong, correct: r.correct,
+      perItem: r.perItem, score: r.score, ts: ts);
+  Map<String, dynamic> toJson() => {
+        't': total, 'n': count, 'w': wrong, 'c': correct, 'p': perItem, 's': score, 'd': ts,
+      };
+  factory HistoryEntry.fromJson(Map<String, dynamic> j) => HistoryEntry(
+      total: j['t'] as String, count: j['n'] as int, wrong: j['w'] as int,
+      correct: j['c'] as int, perItem: j['p'] as String, score: j['s'] as String, ts: j['d'] as int);
+  DateTime get date => DateTime.fromMillisecondsSinceEpoch(ts);
+}
+
+List<HistoryEntry> addToHistory(List<HistoryEntry> list, HistoryEntry e) {
+  final out = [e, ...list];
+  return out.length > maxHistory ? out.sublist(0, maxHistory) : out;
+}
+
+String encodeHistory(List<HistoryEntry> l) => jsonEncode(l.map((e) => e.toJson()).toList());
+
+List<HistoryEntry> decodeHistory(String? s) {
+  if (s == null || s.isEmpty) return [];
+  try {
+    final l = (jsonDecode(s) as List)
+        .map((e) => HistoryEntry.fromJson(e as Map<String, dynamic>))
+        .toList();
+    return l.length > maxHistory ? l.sublist(0, maxHistory) : l;
+  } catch (_) {
+    return [];
+  }
+}
+
+String formatDate(DateTime d) {
+  String two(int v) => v.toString().padLeft(2, '0');
+  return '${d.year}/${two(d.month)}/${two(d.day)}  ${two(d.hour)}:${two(d.minute)}';
 }
